@@ -1,30 +1,44 @@
-import { useState, useEffect } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
-import { multiply } from 'react-native-observable-list';
+import React from 'react';
+import { StyleSheet, View, FlatList } from 'react-native';
+import { observe } from 'react-native-observable-list';
+import TrackableItem from './TrackableItem';
+
+const ObservableFlatList = observe(FlatList);
+
+const outerData = Array.from({ length: 300 }).map(() => ({}));
+const innerData = Array.from({ length: 20 }).map(() => ({}));
 
 export default function App() {
-  const [result, setResult] = useState<number | undefined>();
-
-  useEffect(() => {
-    multiply(3, 7).then(setResult);
-  }, []);
-
   return (
-    <View style={styles.container}>
-      <Text>Result: {result}</Text>
-    </View>
+    <ObservableFlatList
+      style={styles.container}
+      data={outerData}
+      ListHeaderComponent={<View style={styles.header} />}
+      renderItem={({ index: outerIndex }) => {
+        if (outerIndex % 10) return <TrackableItem label={`${outerIndex}`} />;
+        return (
+          <ObservableFlatList
+            key={outerIndex}
+            data={innerData}
+            horizontal
+            renderItem={({ index: innerIndex }) => {
+              return (
+                <TrackableItem
+                  width={100}
+                  label={`${outerIndex}-${innerIndex}`}
+                />
+              );
+            }}
+          />
+        );
+      }}
+    />
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  box: {
-    width: 60,
-    height: 60,
-    marginVertical: 20,
-  },
+  header: { height: 200, backgroundColor: 'green' },
 });
