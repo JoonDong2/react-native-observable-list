@@ -46,7 +46,7 @@ const App = () => {
 
 ## Examples
 
-install dependencis
+install dependencies
 
 ```
 yarn install
