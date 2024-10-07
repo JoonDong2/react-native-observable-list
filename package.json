@@ -47,7 +47,10 @@
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "intersection-observer",
+    "flatlist",
+    "flashlist"
   ],
   "repository": {
     "type": "git",
