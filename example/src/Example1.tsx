@@ -17,7 +17,6 @@ const Example1 = () => {
         if (outerIndex % 10) return <TrackableItem label={`${outerIndex}`} />;
         return (
           <ObservableFlatList
-            key={outerIndex}
             data={innerData}
             horizontal
             renderItem={({ index: innerIndex }) => {
