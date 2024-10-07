@@ -1,3 +1,8 @@
-export function multiply(a: number, b: number): Promise<number> {
-  return Promise.resolve(a * b);
-}
+import { observe, useInViewPort } from './observe';
+
+export { observe, useInViewPort } from './observe';
+
+export default {
+  observe,
+  useInViewPort,
+};
