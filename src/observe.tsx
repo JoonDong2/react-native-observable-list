@@ -78,18 +78,8 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
             callbacksMap.current = undefined;
           }
         }
-
-        if (!cleansMap.current) return;
-        const cleans = cleansMap.current.get(key);
-        cleans?.delete(callback);
-        if (cleans?.size === 0) {
-          cleansMap.current.delete(key);
-          if (cleansMap.current.size === 0) {
-            cleansMap.current = undefined;
-          }
-        }
       },
-      [callbacksMap, cleansMap]
+      [callbacksMap]
     );
 
     const { isInViewPort } = useContext(ItemContext);
