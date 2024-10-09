@@ -163,7 +163,7 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
 
                     const callbacks = callbacksMap.current?.get(itemKey);
                     callbacks?.forEach((callback) => {
-                      const inViewPort = isInViewPort(key);
+                      const inViewPort = isInViewPortRecursively(itemKey);
                       // undefined: This is root observable list.
                       // true/false: This is inner observable list.
                       // If FlatList is an inner list, it will notify viewableItems based on itself even if it is outside the viewport of the outer list, so if it is outside the viewport of the outer list (false), execution will be blocked.
@@ -205,8 +205,7 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
               onViewableItemsChanged?.({ changed, viewableItems });
             },
             [
-              isInViewPort,
-              key,
+              isInViewPortRecursively,
               keyExtractor,
               onViewableItemsChanged,
               viewableKeys,
