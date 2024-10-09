@@ -2,11 +2,11 @@
 
 It provides item tracking functionality for lists that offer an `onViewableItemsChanged` callback with the type `({viewableItems: ViewToken[]}) => void` and a `renderItem` property with the type `({item: ItemT, index: number}) => React.ReactElement`.
 
-- Nesting ([Example1](#example1))
+- Nesting ([Example1](#example1-nesting))
 
-- FlashList ([Example3](#example3))
+- FlashList ([Example3](#example3-flashlist))
 
-- Other Containers ([Example2](#example2))
+- Other Containers ([Example2](#example2-react-native-reanimated-carousel))
 
 ## demo
 
