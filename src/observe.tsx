@@ -51,6 +51,10 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
     const { isInViewPort, key } = useContext(ItemContext);
 
     const viewableKeys = useRef<Set<any>>(new Set()).current;
+
+    // callbacks -> callbacksMap ------−>  callback()
+    //                   ↑ callback            ↓
+    //                clean() ← cleansMap <- clean
     const callbacksMap = useRef<Map<any, Set<any>> | undefined>(undefined);
     const cleansMap = useRef<Map<any, Map<Callback, Clean>> | undefined>(
       undefined
