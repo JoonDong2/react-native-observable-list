@@ -1,5 +1,7 @@
 # react-native-observable-list
 
+This library was developed as a replacement for the browser's IntersectionObserver API.
+
 It provides item tracking functionality for lists that offer an `onViewableItemsChanged` callback with the type `({viewableItems: ViewToken[]}) => void` and a `renderItem` property with the type `({item: ItemT, index: number}) => React.ReactElement`.
 
 - Nesting ([Example1](#example1-nesting))
@@ -29,13 +31,16 @@ const ObservableFlatList = observe(FlatList);
 const data = Array.from({ length: 100 });
 
 const Item = ({ id }) => {
-  useInViewPort(() => {
-    console.log(`id: ${id} is visible.`);
+  // When re-rendering, the callback function is re-registered even if it has been changed.
+  useInViewPort(
+    useCallback(() => {
+      console.log(`id: ${id} is visible.`);
 
-    return () => {
-      console.log(`id: ${id} has been hidden.`);
-    };
-  });
+      return () => {
+        console.log(`id: ${id} has been hidden.`);
+      };
+    }, [])
+  );
   return <View style={{ height: 100 }} />;
 };
 
