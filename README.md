@@ -137,6 +137,12 @@ const Example3 = () => {
 };
 ```
 
+## [key](./src/observe.tsx#L197-L200)
+
+The item object is used as the key to store its visibility status by default.
+
+However, if a `keyExtractor` is provided, the return value of that function is used as the key instead.
+
 ## License
 
 MIT
