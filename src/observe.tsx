@@ -20,7 +20,7 @@ const CallbacksContext = createContext<{
 
 const ItemContext = createContext<{
   key: any;
-  isInViewPort: () => boolean | undefined;
+  isInViewPort: (key: any) => boolean | undefined;
 }>({
   key: undefined,
   isInViewPort: () => undefined,
@@ -82,7 +82,7 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
       [callbacksMap]
     );
 
-    const { isInViewPort } = useContext(ItemContext);
+    const { isInViewPort, key } = useContext(ItemContext);
 
     // 자신이 ObservableList인 경우
     useInViewPort(() => {
@@ -115,103 +115,119 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
       };
     });
 
+    // traverse to root recursively.
+    const isInViewPortRecursively = useCallback(
+      (itemKey: any) => {
+        const isInParentViewPort = isInViewPort(key);
+        const inViewPort = viewableKeys.has(itemKey);
+        if (isInParentViewPort === undefined) {
+          return inViewPort;
+        }
+        return inViewPort && isInParentViewPort;
+      },
+      [isInViewPort, key, viewableKeys]
+    );
+
     return (
       <CallbacksContext.Provider value={{ addCallback, removeCallback }}>
         <List
           {...props}
           keyExtractor={keyExtractor}
-          onViewableItemsChanged={({
-            changed,
-            viewableItems,
-          }: {
-            changed: ViewToken[];
-            viewableItems: ViewToken[];
-          }) => {
-            const willHideKeys = new Set(viewableKeys);
+          onViewableItemsChanged={useCallback(
+            ({
+              changed,
+              viewableItems,
+            }: {
+              changed: ViewToken[];
+              viewableItems: ViewToken[];
+            }) => {
+              const willHideKeys = new Set(viewableKeys);
 
-            for (let i = 0; i < viewableItems.length; i++) {
-              const viewableItem = viewableItems[i];
-              if (!viewableItem) {
-                continue;
-              }
-
-              const { item, isViewable } = viewableItem;
-
-              if (isViewable) {
-                const key =
-                  typeof keyExtractor === 'function'
-                    ? keyExtractor(item)
-                    : item;
-
-                const isNew = !viewableKeys.has(key);
-                if (isNew) {
-                  viewableKeys.add(key);
-
-                  const callbacks = callbacksMap.current?.get(key);
-                  callbacks?.forEach((callback) => {
-                    const inViewPort = isInViewPort();
-                    // undefined: This is root observable list.
-                    // true/false: This is inner observable list.
-                    // If FlatList is an inner list, it will notify viewableItems based on itself even if it is outside the viewport of the outer list, so if it is outside the viewport of the outer list (false), execution will be blocked.
-                    if (inViewPort !== false) {
-                      const clean = callback();
-                      if (clean) {
-                        if (!cleansMap.current) {
-                          cleansMap.current = new Map();
-                        }
-                        let cleans = cleansMap.current.get(key);
-                        if (!cleans) {
-                          cleans = new Set<Clean>();
-                          cleansMap.current.set(key, cleans);
-                        }
-                        cleans.add(clean);
-                      }
-                    }
-                  });
+              for (let i = 0; i < viewableItems.length; i++) {
+                const viewableItem = viewableItems[i];
+                if (!viewableItem) {
+                  continue;
                 }
 
-                willHideKeys.delete(key);
-              }
-            }
+                const { item, isViewable } = viewableItem;
 
-            willHideKeys.forEach((key) => {
-              viewableKeys.delete(key);
+                if (isViewable) {
+                  const itemKey =
+                    typeof keyExtractor === 'function'
+                      ? keyExtractor(item)
+                      : item;
 
-              if (!cleansMap.current) {
-                cleansMap.current = new Map();
-              }
-              const cleans = cleansMap.current!.get(key);
-              cleans?.forEach((clean) => clean());
-              cleansMap.current!.delete(key);
-              if (cleansMap.current!.size === 0) {
-                cleansMap.current = undefined;
-              }
-            });
+                  const isNew = !viewableKeys.has(itemKey);
+                  if (isNew) {
+                    viewableKeys.add(itemKey);
 
-            onViewableItemsChanged?.({ changed, viewableItems });
-          }}
-          renderItem={(itemProps: any) => {
-            const key = isFunction(keyExtractor)
-              ? keyExtractor(itemProps.item)
-              : itemProps.item;
+                    const callbacks = callbacksMap.current?.get(itemKey);
+                    callbacks?.forEach((callback) => {
+                      const inViewPort = isInViewPort(key);
+                      // undefined: This is root observable list.
+                      // true/false: This is inner observable list.
+                      // If FlatList is an inner list, it will notify viewableItems based on itself even if it is outside the viewport of the outer list, so if it is outside the viewport of the outer list (false), execution will be blocked.
+                      if (inViewPort !== false) {
+                        const clean = callback();
+                        if (clean) {
+                          if (!cleansMap.current) {
+                            cleansMap.current = new Map();
+                          }
+                          let cleans = cleansMap.current.get(itemKey);
+                          if (!cleans) {
+                            cleans = new Set<Clean>();
+                            cleansMap.current.set(itemKey, cleans);
+                          }
+                          cleans.add(clean);
+                        }
+                      }
+                    });
+                  }
 
-            // traverse to root recursively.
-            const _isInViewPort = () => {
-              const isInParentViewPort = isInViewPort();
-              const inViewPort = viewableKeys.has(key);
-              if (isInParentViewPort === undefined) {
-                return inViewPort;
+                  willHideKeys.delete(itemKey);
+                }
               }
-              return inViewPort && isInParentViewPort;
-            };
-            return (
-              <ItemContext.Provider
-                value={{ key, isInViewPort: _isInViewPort }}
-              >
-                {renderItem(itemProps)}
-              </ItemContext.Provider>
-            );
-          }}
+
+              willHideKeys.forEach((key) => {
+                viewableKeys.delete(key);
+
+                if (!cleansMap.current) {
+                  cleansMap.current = new Map();
+                }
+                const cleans = cleansMap.current!.get(key);
+                cleans?.forEach((clean) => clean());
+                cleansMap.current!.delete(key);
+                if (cleansMap.current!.size === 0) {
+                  cleansMap.current = undefined;
+                }
+              });
+
+              onViewableItemsChanged?.({ changed, viewableItems });
+            },
+            [
+              isInViewPort,
+              key,
+              keyExtractor,
+              onViewableItemsChanged,
+              viewableKeys,
+            ]
+          )}
+          renderItem={useCallback(
+            (itemProps: any) => {
+              const key = isFunction(keyExtractor)
+                ? keyExtractor(itemProps.item)
+                : itemProps.item;
+
+              return (
+                <ItemContext.Provider
+                  value={{ key, isInViewPort: isInViewPortRecursively }}
+                >
+                  {renderItem(itemProps)}
+                </ItemContext.Provider>
+              );
+            },
+            [isInViewPortRecursively, keyExtractor, renderItem]
+          )}
         />
       </CallbacksContext.Provider>
     );
