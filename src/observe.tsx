@@ -28,9 +28,11 @@ const ItemContext = createContext<{
 
 const isFunction = (f: any) => typeof f === 'function';
 
-export const useInViewPort = (callback: Callback) => {
+export const useInViewPort = (callback: Callback, deps?: any[]) => {
   const { key } = useContext(ItemContext);
   const { addCallback, removeCallback } = useContext(CallbacksContext);
+
+  const finalDeps = Array.isArray(deps) ? deps : [callback];
 
   useEffect(() => {
     if (!key) return; // If it is not an item of observable list.
@@ -38,7 +40,9 @@ export const useInViewPort = (callback: Callback) => {
     return () => {
       removeCallback(key, callback);
     };
-  }, [key, addCallback, removeCallback, callback]);
+    // The callback depends on deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, addCallback, removeCallback, ...finalDeps]);
 };
 
 export function observe<L extends React.ComponentType<any>>(List: L) {
@@ -101,31 +105,28 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
       [isInViewPortRecursively]
     );
 
-    const removeCallback = useCallback(
-      (key: any, callback: Callback) => {
-        if (callbacksMap.current) {
-          const callbacks = callbacksMap.current.get(key);
-          callbacks?.delete(callback);
-          if (callbacks?.size === 0) {
-            callbacksMap.current.delete(key);
-            if (callbacksMap.current.size === 0) {
-              callbacksMap.current = undefined;
-            }
+    const removeCallback = useCallback((key: any, callback: Callback) => {
+      if (callbacksMap.current) {
+        const callbacks = callbacksMap.current.get(key);
+        callbacks?.delete(callback);
+        if (callbacks?.size === 0) {
+          callbacksMap.current.delete(key);
+          if (callbacksMap.current.size === 0) {
+            callbacksMap.current = undefined;
           }
         }
-        if (cleansMap.current) {
-          const cleansWithCallback = cleansMap.current.get(key);
-          cleansWithCallback?.delete(callback);
-          if (cleansWithCallback?.size === 0) {
-            cleansMap.current.delete(key);
-            if (cleansMap.current.size === 0) {
-              cleansMap.current = undefined;
-            }
+      }
+      if (cleansMap.current) {
+        const cleansWithCallback = cleansMap.current.get(key);
+        cleansWithCallback?.delete(callback);
+        if (cleansWithCallback?.size === 0) {
+          cleansMap.current.delete(key);
+          if (cleansMap.current.size === 0) {
+            cleansMap.current = undefined;
           }
         }
-      },
-      [callbacksMap]
-    );
+      }
+    }, []);
 
     // When self is an item of an observable list.
     useInViewPort(() => {
@@ -179,7 +180,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
           }
         });
       };
-    });
+    }, []);
 
     const ListComponent = List as any;
 
@@ -255,7 +256,8 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                 if (!cleansMap.current) {
                   cleansMap.current = new Map();
                 }
-                const cleansWithCallback = cleansMap.current!.get(key);
+                const cleansWithCallback = cleansMap.current.get(key);
+
                 cleansWithCallback?.forEach((clean, callback) => {
                   if (typeof clean === 'function') {
                     clean();
