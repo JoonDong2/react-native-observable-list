@@ -41,13 +41,11 @@ export const useInViewPort = (callback: Callback) => {
   }, [key, addCallback, removeCallback, callback]);
 };
 
-export function observe<L extends React.ComponentType<any>>(List: L): L {
-  return function ({
-    onViewableItemsChanged,
-    keyExtractor,
-    renderItem,
-    ...props
-  }: any) {
+export function observe<L extends React.ComponentType<any>>(List: L) {
+  return React.forwardRef<L, any>(function (
+    { onViewableItemsChanged, keyExtractor, renderItem, ...props },
+    ref
+  ) {
     const { isInViewPort, key } = useContext(ItemContext);
 
     const viewableKeys = useRef<Set<any>>(new Set()).current;
@@ -183,10 +181,13 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
       };
     });
 
+    const ListComponent = List as any;
+
     return (
       <CallbacksContext.Provider value={{ addCallback, removeCallback }}>
-        <List
+        <ListComponent
           {...props}
+          ref={ref}
           keyExtractor={keyExtractor}
           onViewableItemsChanged={useCallback(
             ({
@@ -305,5 +306,5 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
         />
       </CallbacksContext.Provider>
     );
-  } as L;
+  }) as unknown as L;
 }
