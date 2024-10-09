@@ -129,7 +129,7 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
       [callbacksMap]
     );
 
-    // 자신이 ObservableList인 경우
+    // When self is an item of an observable list.
     useInViewPort(() => {
       viewableKeys.forEach((key) => {
         const callbacks = callbacksMap.current?.get(key);
