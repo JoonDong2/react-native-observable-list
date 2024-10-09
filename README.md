@@ -70,7 +70,7 @@ It supports both reverse and forward nesting.
 
 ## [Example2](./example/src/Example2.tsx) (react-native-reanimated-carousel)
 
-it can also be used with containers that do not have the onViewableItemsChanged and renderItem props.
+It can also be used with containers that do not have the onViewableItemsChanged and renderItem props.
 
 ```js
 import { observe } from 'react-native-observable-list';
