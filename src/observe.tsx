@@ -56,9 +56,9 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
     //                   ↑ callback            ↓
     //                clean() ← cleansMap <- clean
     const callbacksMap = useRef<Map<any, Set<any>> | undefined>(undefined);
-    const cleansMap = useRef<Map<any, Map<Callback, Clean>> | undefined>(
-      undefined
-    );
+    const cleansMap = useRef<
+      Map<any, Map<Callback, Clean | undefined>> | undefined
+    >(undefined);
 
     // traverse to root recursively.
     const isInViewPortRecursively = useCallback(
@@ -136,40 +136,49 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
         if (callbacks) {
           callbacks.forEach((callback) => {
             const clean = callback();
-            if (clean) {
-              if (!cleansMap.current) {
-                cleansMap.current = new Map();
-              }
-              let cleansWithCallback = cleansMap.current.get(key);
-              if (!cleansWithCallback) {
-                cleansWithCallback = new Map();
-                cleansMap.current.set(key, cleansWithCallback);
-              }
-              cleansWithCallback.set(callback, clean);
+            if (!cleansMap.current) {
+              cleansMap.current = new Map();
             }
+            let cleansWithCallback = cleansMap.current.get(key);
+            if (!cleansWithCallback) {
+              cleansWithCallback = new Map();
+              cleansMap.current.set(key, cleansWithCallback);
+            }
+            cleansWithCallback.set(callback, clean);
+            callbacks.delete(callback);
           });
           callbacksMap.current?.delete(key);
+          if (callbacksMap.current?.size === 0) {
+            callbacksMap.current = undefined;
+          }
         }
       });
 
       return () => {
         viewableKeys.forEach((key) => {
           const cleansWithCallback = cleansMap.current?.get(key);
-          cleansWithCallback?.forEach((clean, callback) => {
-            clean();
+          if (cleansWithCallback) {
+            cleansWithCallback.forEach((clean, callback) => {
+              if (typeof clean === 'function') {
+                clean();
+              }
 
-            // give back again
-            if (!callbacksMap.current) {
-              callbacksMap.current = new Map();
+              // give back again
+              if (!callbacksMap.current) {
+                callbacksMap.current = new Map();
+              }
+              let callbacks = callbacksMap.current.get(key);
+              if (!callbacks) {
+                callbacks = new Set();
+                callbacksMap.current.set(key, callbacks);
+              }
+              callbacks.add(callback);
+            });
+            cleansMap.current?.delete(key);
+            if (cleansMap.current?.size === 0) {
+              cleansMap.current = undefined;
             }
-            let callbacks = callbacksMap.current.get(key);
-            if (!callbacks) {
-              callbacks = new Set();
-              callbacksMap.current.set(key, callbacks);
-            }
-            callbacks.add(callback);
-          });
-          cleansMap.current?.delete(key);
+          }
         });
       };
     });
@@ -215,21 +224,24 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
                       // If FlatList is an inner list, it will notify viewableItems based on itself even if it is outside the viewport of the outer list, so if it is outside the viewport of the outer list (false), execution will be blocked.
                       if (inViewPort) {
                         const clean = callback();
-                        if (clean) {
-                          if (!cleansMap.current) {
-                            cleansMap.current = new Map();
-                          }
-                          let cleansWithCallback =
-                            cleansMap.current.get(itemKey);
-                          if (!cleansWithCallback) {
-                            cleansWithCallback = new Map();
-                            cleansMap.current.set(itemKey, cleansWithCallback);
-                          }
-                          cleansWithCallback.set(callback, clean);
+                        if (!cleansMap.current) {
+                          cleansMap.current = new Map();
                         }
+                        let cleansWithCallback = cleansMap.current.get(itemKey);
+                        if (!cleansWithCallback) {
+                          cleansWithCallback = new Map();
+                          cleansMap.current.set(itemKey, cleansWithCallback);
+                        }
+                        cleansWithCallback.set(callback, clean);
                         callbacks.delete(callback);
                       }
                     });
+                    if (callbacks?.size === 0) {
+                      callbacksMap.current?.delete(itemKey);
+                      if (callbacksMap.current?.size === 0) {
+                        callbacksMap.current = undefined;
+                      }
+                    }
                   }
 
                   willHideKeys.delete(itemKey);
@@ -244,7 +256,9 @@ export function observe<L extends React.ComponentType<any>>(List: L): L {
                 }
                 const cleansWithCallback = cleansMap.current!.get(key);
                 cleansWithCallback?.forEach((clean, callback) => {
-                  clean();
+                  if (typeof clean === 'function') {
+                    clean();
+                  }
 
                   // give back again
                   if (!callbacksMap.current) {
