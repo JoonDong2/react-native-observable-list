@@ -22,6 +22,10 @@ npm install react-native-observable-list
 
 ## Usage
 
+You can use the `useInViewPort` hook anywhere within the item to register an event handler that will trigger when the item enters or leaves the viewport.
+
+The newly created component with observe will have an additional property called `$$enabled` (default is true).
+
 ```js
 import { FlatList } from 'react-native';
 import { observe, useInViewPort } from 'react-native-observable-list';
@@ -29,6 +33,8 @@ import { observe, useInViewPort } from 'react-native-observable-list';
 const ObservableFlatList = observe(FlatList);
 
 const data = Array.from({ length: 100 });
+
+const isFocused = useIsFocused();
 
 const Item = ({ id }) => {
   // The callback is re-registered whenever deps change.
@@ -44,7 +50,13 @@ const Item = ({ id }) => {
 };
 
 const App = () => {
-  return <ObservableFlatList data={data} renderItem={() => <Item />} />;
+  return (
+    <ObservableFlatList
+      $$enabled={isFocused}
+      data={data}
+      renderItem={() => <Item />}
+    />
+  );
 };
 ```
 
