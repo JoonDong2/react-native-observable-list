@@ -147,6 +147,38 @@ The item object is used as the key to store its visibility status by default.
 
 However, if a `keyExtractor` is provided, the return value of that function is used as the key instead.
 
+## Known Issue
+
+### Visibility Judgment Criteria
+
+`FlatList` considers an item component as non-existent if it doesn't occupy space (e.g., `<View />`), even if the component is within the viewport.
+
+On the other hand, `FlashList` considers an item as existent as long as it is within the viewport, even if it doesn't occupy space.
+
+```js
+const Item = ({ id }: any) => {
+  useInViewPort(() => {
+    console.log(`${id} mount !!`);
+    return () => {
+      console.log(`${id} unmount !!`); // executed on FlatList
+    };
+  });
+
+  const [hide, setHide] = useState(false);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setHide(true);
+    }, 1000);
+  }, []);
+
+  if (hide) return <View />;
+  return <View style={{ width: 10, height: 10 }} />;
+};
+```
+
+Therefore, the cleanup function of useInViewPort was not designed to run when unmounted, but depending on the situation, it may still run during unmounting.
+
 ## License
 
 MIT
