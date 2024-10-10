@@ -31,16 +31,15 @@ const ObservableFlatList = observe(FlatList);
 const data = Array.from({ length: 100 });
 
 const Item = ({ id }) => {
-  // When re-rendering, the callback function is re-registered even if it has been changed.
-  useInViewPort(
-    useCallback(() => {
-      console.log(`id: ${id} is visible.`);
+  // The callback is re-registered whenever deps change.
+  // clean is executed when an item leaves the viewport. (not unmount)
+  useInViewPort(() => {
+    console.log(`id: ${id} is visible.`);
 
-      return () => {
-        console.log(`id: ${id} has been hidden.`);
-      };
-    }, [])
-  );
+    return () => {
+      console.log(`id: ${id} has been hidden.`);
+    };
+  }, []);
   return <View style={{ height: 100 }} />;
 };
 
