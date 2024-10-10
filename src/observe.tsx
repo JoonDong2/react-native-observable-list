@@ -124,7 +124,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
 
     const { enabled: parentEnabled } = useContext(ConfigurationContext);
     const enabled = parentEnabled && $$enabled !== false ? true : false;
-    const enabledRef = useRef(enabled);
+    const enabledRef = useRef(enabled); //  This is because `FlashList` does not detect changes in `onViewableItemsChanged`.
     useEffect(() => {
       enabledRef.current = enabled;
     }, [enabled]);
@@ -284,7 +284,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                     if (isNew) {
                       viewableKeys.add(itemKey);
 
-                      if (enabled && enabledRef.current) {
+                      if (enabledRef.current) {
                         const callbacks = callbacksMap.current?.get(itemKey);
                         callbacks?.forEach((callback) => {
                           const inViewPort = isInViewPortRecursively(itemKey);
@@ -322,7 +322,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                 willHideKeys.forEach((key) => {
                   viewableKeys.delete(key);
 
-                  if (enabled && enabledRef.current) {
+                  if (enabledRef.current) {
                     if (!cleansMap.current) {
                       cleansMap.current = new Map();
                     }
@@ -358,7 +358,6 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                 keyExtractor,
                 onViewableItemsChanged,
                 viewableKeys,
-                enabled,
               ]
             )}
             renderItem={useCallback(
