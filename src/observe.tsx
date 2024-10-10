@@ -116,16 +116,6 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
           }
         }
       }
-      if (cleansMap.current) {
-        const cleansWithCallback = cleansMap.current.get(key);
-        cleansWithCallback?.delete(callback);
-        if (cleansWithCallback?.size === 0) {
-          cleansMap.current.delete(key);
-          if (cleansMap.current.size === 0) {
-            cleansMap.current = undefined;
-          }
-        }
-      }
     }, []);
 
     // When self is an item of an observable list.
