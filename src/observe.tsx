@@ -109,27 +109,36 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
       [isInViewPortRecursively]
     );
 
+    const removeCallbackTasks = useRef<(() => void)[]>();
+
     const removeCallback = useCallback((key: any, callback: Callback) => {
-      if (callbacksMap.current) {
-        const callbacks = callbacksMap.current.get(key);
-        callbacks?.delete(callback);
-        if (callbacks?.size === 0) {
-          callbacksMap.current.delete(key);
-          if (callbacksMap.current.size === 0) {
-            callbacksMap.current = undefined;
+      const task = () => {
+        if (callbacksMap.current) {
+          const callbacks = callbacksMap.current.get(key);
+          callbacks?.delete(callback);
+          if (callbacks?.size === 0) {
+            callbacksMap.current.delete(key);
+            if (callbacksMap.current.size === 0) {
+              callbacksMap.current = undefined;
+            }
           }
         }
-      }
-      if (cleansMap.current) {
-        const cleansWithCallback = cleansMap.current.get(key);
-        cleansWithCallback?.delete(callback);
-        if (cleansWithCallback?.size === 0) {
-          cleansMap.current.delete(key);
-          if (cleansMap.current.size === 0) {
-            cleansMap.current = undefined;
+
+        if (cleansMap.current) {
+          const cleansWithCallback = cleansMap.current.get(key);
+          cleansWithCallback?.delete(callback);
+          if (cleansWithCallback?.size === 0) {
+            cleansMap.current.delete(key);
+            if (cleansMap.current.size === 0) {
+              cleansMap.current = undefined;
+            }
           }
         }
+      };
+      if (!removeCallbackTasks.current) {
+        removeCallbackTasks.current = [];
       }
+      removeCallbackTasks.current.push(task);
     }, []);
 
     const { enabled: parentEnabled } = useContext(ConfigurationContext);
@@ -360,6 +369,13 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                     }
                   }
                 });
+
+                if (removeCallbackTasks.current) {
+                  for (let i = 0; i < removeCallbackTasks.current.length; i++) {
+                    removeCallbackTasks.current[i]?.();
+                  }
+                }
+                removeCallbackTasks.current = undefined;
 
                 onViewableItemsChanged?.({ changed, viewableItems });
               },
