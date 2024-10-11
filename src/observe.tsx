@@ -5,7 +5,11 @@ import React, {
   useEffect,
   useRef,
 } from 'react';
-import { type ViewToken } from 'react-native';
+import {
+  type CellRendererProps,
+  type ListRenderItem,
+  type ViewToken,
+} from 'react-native';
 
 type Clean = () => void;
 type Callback = () => Clean | undefined | void;
@@ -407,7 +411,45 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
         </CallbacksContext.Provider>
       </ConfigurationContext.Provider>
     );
-  }) as unknown as React.ComponentType<
-    React.ComponentProps<L> & { $$enabled?: boolean; ref?: any }
-  >;
+  }) as unknown as <ItemT>(
+    props: Omit<
+      React.ComponentProps<L>,
+      | 'ref'
+      | 'data'
+      | 'renderItem'
+      | 'getItemLayout'
+      | 'onViewableItemsChanged'
+      | 'keyExtractor'
+      | 'CellRendererComponent'
+      | 'getItemType'
+    > & {
+      ref?: any;
+      $$enabled?: boolean;
+      data: ItemT[];
+      renderItem: ListRenderItem<ItemT>;
+      getItemLayout?:
+        | ((
+            data: ArrayLike<ItemT> | null | undefined,
+            index: number
+          ) => { length: number; offset: number; index: number })
+        | undefined;
+      onViewableItemsChanged?:
+        | ((info: {
+            viewableItems: Array<ViewToken<ItemT>>;
+            changed: Array<ViewToken<ItemT>>;
+          }) => void)
+        | null
+        | undefined;
+      keyExtractor?: ((item: ItemT, index: number) => string) | undefined;
+      CellRendererComponent?:
+        | React.ComponentType<CellRendererProps<ItemT>>
+        | null
+        | undefined;
+      getItemType?: (
+        item: ItemT,
+        index: number,
+        extraData?: any
+      ) => string | number | undefined;
+    }
+  ) => React.ReactElement;
 }
