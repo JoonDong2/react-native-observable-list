@@ -341,10 +341,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                 willHideKeys.forEach((key) => {
                   viewableKeys.delete(key);
 
-                  if (enabledRef.current) {
-                    if (!cleansMap.current) {
-                      cleansMap.current = new Map();
-                    }
+                  if (enabledRef.current && cleansMap.current) {
                     const cleansWithCallback = cleansMap.current.get(key);
 
                     cleansWithCallback?.forEach((clean, callback) => {
@@ -370,6 +367,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                   }
                 });
 
+                // reserved from removeCallback
                 if (removeCallbackTasks.current) {
                   for (let i = 0; i < removeCallbackTasks.current.length; i++) {
                     removeCallbackTasks.current[i]?.();
