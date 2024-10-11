@@ -204,6 +204,45 @@ Therefore, while there should be no issue when wrapping `FlatList`, if you wrap 
 
 You may need to check if the original component has the same properties and override them as needed, like in `Example2`.
 
+## Observable List Chain
+
+I will define the component wrapped with `observe` as `Observable List`.
+
+All lists up to the root of the item where the `useInViewPort` hook is used must be Observable Lists.
+
+If the nested list is not an Observable List, its items will not be properly tracked.
+
+In the example below, when the inner FlatList becomes visible on the screen, it is considered that all of its items are being in the viewport.
+
+```js
+const Example1 = () => {
+  return (
+    <ObservableFlatList
+      style={styles.container}
+      data={outerData}
+      ListHeaderComponent={<View style={styles.header} />}
+      renderItem={({ index: outerIndex }) => {
+        if (outerIndex % 10) return <TrackableItem label={`${outerIndex}`} />;
+        return (
+          <FlatList // not allowed
+            data={innerData}
+            horizontal
+            renderItem={({ index: innerIndex }) => {
+              return (
+                <TrackableItem
+                  width={100}
+                  label={`${outerIndex}-${innerIndex}`}
+                />
+              );
+            }}
+          />
+        );
+      }}
+    />
+  );
+};
+```
+
 ## License
 
 MIT
