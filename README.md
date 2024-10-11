@@ -24,7 +24,7 @@ npm install react-native-observable-list
 
 You can use the `useInViewPort` hook anywhere within the item to register an event handler that will trigger when the item enters or leaves the viewport.
 
-The newly created component with observe will have an additional property called `$$enabled` (optional, default is true).
+The newly created component with observe will have an `$$enabled` (optional, default is true) property.
 
 ```js
 import { FlatList } from 'react-native';
@@ -85,7 +85,7 @@ yarn example ios
 
 It supports both reverse and forward nesting.
 
-## [Example2](./example/src/Example2.tsx) (react-native-reanimated-carousel)
+## [Example2](./example/src/Example2.tsx) ([react-native-reanimated-carousel](https://github.com/dohooo/react-native-reanimated-carousel))
 
 It can also be used with containers that do not have the onViewableItemsChanged and renderItem props.
 
@@ -154,7 +154,7 @@ const Example3 = () => {
 };
 ```
 
-## [key](./src/observe.tsx#L278-L281)
+## [key](./src/observe.tsx#L297-L300)
 
 The item object is used as the key to store its visibility status by default.
 
