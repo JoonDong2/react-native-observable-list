@@ -154,7 +154,7 @@ const Example3 = () => {
 };
 ```
 
-## [key](./src/observe.tsx#L297-L300)
+## [key](./src/observe.tsx#L301-L304)
 
 The item object is used as the key to store its visibility status by default.
 
@@ -191,6 +191,18 @@ const Item = ({ id }: any) => {
 ```
 
 Therefore, the cleanup function of useInViewPort was not designed to run when unmounted, but depending on the situation, it may still run during unmounting.
+
+### Type Cast
+
+I was unable to cast the input type directly to add the `$$enabled` property.
+
+Despite trying various casting methods, both `FlatList` and `FlashList` could not infer the item type.
+
+As a result, I had to [override the property that uses the item type in props](./src/observe.tsx#L414-L454).
+
+Therefore, while there should be no issue when wrapping `FlatList`, if you wrap a custom component (e.g., [`Example2`](#example2-react-native-reanimated-carousel)), newly added properties like `getItemLayout`, `CellRendererComponent`, and `getItemType` might be recognized by the newly created component.
+
+You may need to check if the original component has the same properties and override them as needed, like in `Example2`.
 
 ## License
 
