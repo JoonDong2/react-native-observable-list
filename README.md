@@ -162,7 +162,7 @@ However, if a `keyExtractor` is provided, the return value of that function is u
 
 ## Known Issue
 
-### Visibility Judgment Criteria
+### Visibility Judgment
 
 `FlatList` considers an item component as non-existent if it doesn't occupy space (e.g., `<View />`), even if the component is within the viewport.
 
@@ -204,7 +204,7 @@ Therefore, while there should be no issue when wrapping `FlatList`, if you wrap 
 
 You may need to check if the original component has the same properties and override them as needed, like in `Example2`.
 
-## Observable List Chain
+### Observable Lists Must Connect to the Root
 
 I will define the component wrapped with `observe` as `Observable List`.
 
@@ -242,6 +242,16 @@ const Example1 = () => {
   );
 };
 ```
+
+### Sticky
+
+`FlatList` excludes items that start being managed as Sticky Headers from `viewableItems`.
+
+Because of this, even if an item with the sticky property is visible on the screen, it may be perceived as gone.
+
+`FlashList` duplicates sticky items and overlaps them.
+
+Because of this, items may appear twice and be perceived as disappearing.
 
 ## License
 
