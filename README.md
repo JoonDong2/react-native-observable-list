@@ -24,7 +24,7 @@ npm install react-native-observable-list
 
 You can use the `useInViewPort` hook anywhere within the item to register an event handler that will trigger when the item enters or leaves the viewport.
 
-The newly created component with observe will have an `$$enabled` (optional, default is true) property.
+The newly created component with `observe` will have an `$$enabled` (optional, default is true) property.
 
 ```js
 import { FlatList } from 'react-native';
@@ -34,8 +34,6 @@ import { useIsFocused } from '@react-navigation/native';
 const ObservableFlatList = observe(FlatList);
 
 const data = Array.from({ length: 100 });
-
-const isFocused = useIsFocused();
 
 const Item = ({ id }) => {
   // The callback is re-registered whenever deps change.
@@ -51,6 +49,7 @@ const Item = ({ id }) => {
 };
 
 const App = () => {
+  const isFocused = useIsFocused();
   return (
     <ObservableFlatList
       $$enabled={isFocused} // if you need
@@ -87,7 +86,7 @@ It supports both reverse and forward nesting.
 
 ## [Example2](./example/src/Example2.tsx) ([react-native-reanimated-carousel](https://github.com/dohooo/react-native-reanimated-carousel))
 
-It can also be used with containers that do not have the onViewableItemsChanged and renderItem props.
+It can also be used with containers that do not have the `onViewableItemsChanged` and renderItem props.
 
 ```js
 import { observe } from 'react-native-observable-list';
@@ -127,9 +126,9 @@ const ObservableCarousel = observe(ViewableCarousel);
 
 ## [Example3](./example/src/Example3.tsx) (FlashList)
 
-It can also be used with FlashList, which offers a similar interface to FlatList.
+It can also be used with `FlashList`, which offers a similar interface to `FlatList`.
 
-In this case, you have to use a key in the internal list to prevent recycling.
+In this case, you have to use a `key` in the internal list to prevent recycling.
 
 ```js
 import { observe } from 'react-native-observable-list';
@@ -156,7 +155,7 @@ const Example3 = () => {
 
 ## [key](./src/observe.tsx#L301-L304)
 
-The item object is used as the key to store its visibility status by default.
+The item object is used as the `key` to store its visibility status by default.
 
 However, if a `keyExtractor` is provided, the return value of that function is used as the key instead.
 
