@@ -40,7 +40,7 @@ export const useInViewPort = (callback: Callback, deps?: any[]) => {
   const { key } = useContext(ItemContext);
   const { addCallback, removeCallback } = useContext(CallbacksContext);
 
-  const finalDeps = Array.isArray(deps) ? deps : [callback];
+  const finalDeps = Array.isArray(deps) ? deps : [];
 
   useEffect(() => {
     if (!key) return; // If it is not an item of observable list.
