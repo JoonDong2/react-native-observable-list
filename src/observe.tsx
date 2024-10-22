@@ -65,14 +65,6 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
 
     const viewableKeys = useRef<Set<any>>(new Set()).current;
 
-    // callbacks -> callbacksMap ------−>  callback()
-    //                   ↑ callback            ↓
-    //                clean() ← cleansMap <- clean
-    const callbacksMap = useRef<Map<any, Set<any>> | undefined>(undefined);
-    const cleansMap = useRef<
-      Map<any, Map<Callback, Clean | undefined>> | undefined
-    >(undefined);
-
     // traverse to root recursively.
     const isInViewPortRecursively = useCallback(
       (itemKey: any) => {
@@ -86,7 +78,17 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
       [isInViewPort, key, viewableKeys]
     );
 
-    const addInViewPortCallback = useCallback(
+    // callbacks -> callbacksMap ------−>  callback()
+    //                   ↑ callback            ↓
+    //                clean() ← cleansMap <- clean
+    const inViewPortCallbacksMap = useRef<Map<any, Set<any>> | undefined>(
+      undefined
+    );
+    const inViewPortCleansMap = useRef<
+      Map<any, Map<Callback, Clean | undefined>> | undefined
+    >(undefined);
+
+    const addCallback = useCallback(
       (
         store: {
           callbacksMap: { current?: Map<any, Set<any>> };
@@ -125,7 +127,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
 
     const removeCallbackTasks = useRef<(() => void)[]>();
 
-    const removeInViewPortCallback = useCallback(
+    const removeCallback = useCallback(
       (
         store: {
           callbacksMap: { current?: Map<any, Set<any>> };
@@ -152,7 +154,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
             if (cleansWithCallback?.size === 0) {
               store.cleansMap.current.delete(itemKey);
               if (store.cleansMap.current.size === 0) {
-                cleansMap.current = undefined;
+                inViewPortCleansMap.current = undefined;
               }
             }
           }
@@ -177,31 +179,31 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
       if (!enabled) return;
 
       viewableKeys.forEach((itemKey) => {
-        const callbacks = callbacksMap.current?.get(itemKey);
+        const callbacks = inViewPortCallbacksMap.current?.get(itemKey);
         if (callbacks) {
           callbacks.forEach((callback) => {
             const clean = callback();
-            if (!cleansMap.current) {
-              cleansMap.current = new Map();
+            if (!inViewPortCleansMap.current) {
+              inViewPortCleansMap.current = new Map();
             }
-            let cleansWithCallback = cleansMap.current.get(itemKey);
+            let cleansWithCallback = inViewPortCleansMap.current.get(itemKey);
             if (!cleansWithCallback) {
               cleansWithCallback = new Map();
-              cleansMap.current.set(itemKey, cleansWithCallback);
+              inViewPortCleansMap.current.set(itemKey, cleansWithCallback);
             }
             cleansWithCallback.set(callback, clean);
             callbacks.delete(callback);
           });
-          callbacksMap.current?.delete(itemKey);
-          if (callbacksMap.current?.size === 0) {
-            callbacksMap.current = undefined;
+          inViewPortCallbacksMap.current?.delete(itemKey);
+          if (inViewPortCallbacksMap.current?.size === 0) {
+            inViewPortCallbacksMap.current = undefined;
           }
         }
       });
 
       return () => {
         viewableKeys.forEach((itemKey) => {
-          const cleansWithCallback = cleansMap.current?.get(itemKey);
+          const cleansWithCallback = inViewPortCleansMap.current?.get(itemKey);
           if (cleansWithCallback) {
             cleansWithCallback.forEach((clean, callback) => {
               if (typeof clean === 'function') {
@@ -209,19 +211,19 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
               }
 
               // give back again
-              if (!callbacksMap.current) {
-                callbacksMap.current = new Map();
+              if (!inViewPortCallbacksMap.current) {
+                inViewPortCallbacksMap.current = new Map();
               }
-              let callbacks = callbacksMap.current.get(itemKey);
+              let callbacks = inViewPortCallbacksMap.current.get(itemKey);
               if (!callbacks) {
                 callbacks = new Set();
-                callbacksMap.current.set(itemKey, callbacks);
+                inViewPortCallbacksMap.current.set(itemKey, callbacks);
               }
               callbacks.add(callback);
             });
-            cleansMap.current?.delete(itemKey);
-            if (cleansMap.current?.size === 0) {
-              cleansMap.current = undefined;
+            inViewPortCleansMap.current?.delete(itemKey);
+            if (inViewPortCleansMap.current?.size === 0) {
+              inViewPortCleansMap.current = undefined;
             }
           }
         });
@@ -233,25 +235,25 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
       if (!enabled) {
         // give back all cleans
         viewableKeys.forEach((itemKey) => {
-          const cleansWithCallback = cleansMap.current?.get(itemKey);
+          const cleansWithCallback = inViewPortCleansMap.current?.get(itemKey);
           cleansWithCallback?.forEach((clean, callback) => {
             if (typeof clean === 'function') {
               clean();
             }
 
-            if (!callbacksMap.current) {
-              callbacksMap.current = new Map();
+            if (!inViewPortCallbacksMap.current) {
+              inViewPortCallbacksMap.current = new Map();
             }
-            let callbacks = callbacksMap.current.get(itemKey);
+            let callbacks = inViewPortCallbacksMap.current.get(itemKey);
             if (!callbacks) {
               callbacks = new Set();
-              callbacksMap.current.set(itemKey, callbacks);
+              inViewPortCallbacksMap.current.set(itemKey, callbacks);
             }
             callbacks.add(callback);
           });
-          cleansMap.current?.delete(itemKey);
-          if (callbacksMap.current?.size === 0) {
-            callbacksMap.current = undefined;
+          inViewPortCleansMap.current?.delete(itemKey);
+          if (inViewPortCallbacksMap.current?.size === 0) {
+            inViewPortCallbacksMap.current = undefined;
           }
         });
       }
@@ -261,27 +263,28 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
         if (!enabled) {
           // consume callback
           viewableKeys.forEach((itemKey) => {
-            const callbacks = callbacksMap.current?.get(itemKey);
+            const callbacks = inViewPortCallbacksMap.current?.get(itemKey);
             callbacks?.forEach((callback) => {
               const inViewPort = isInViewPortRecursively(itemKey);
               if (inViewPort) {
                 const clean = callback();
-                if (!cleansMap.current) {
-                  cleansMap.current = new Map();
+                if (!inViewPortCleansMap.current) {
+                  inViewPortCleansMap.current = new Map();
                 }
-                let cleansWithCallback = cleansMap.current.get(itemKey);
+                let cleansWithCallback =
+                  inViewPortCleansMap.current.get(itemKey);
                 if (!cleansWithCallback) {
                   cleansWithCallback = new Map();
-                  cleansMap.current.set(itemKey, cleansWithCallback);
+                  inViewPortCleansMap.current.set(itemKey, cleansWithCallback);
                 }
                 cleansWithCallback.set(callback, clean);
                 callbacks.delete(callback);
               }
             });
             if (callbacks?.size === 0) {
-              callbacksMap.current?.delete(itemKey);
-              if (callbacksMap.current?.size === 0) {
-                callbacksMap.current = undefined;
+              inViewPortCallbacksMap.current?.delete(itemKey);
+              if (inViewPortCallbacksMap.current?.size === 0) {
+                inViewPortCallbacksMap.current = undefined;
               }
             }
           });
@@ -298,21 +301,27 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
           value={{
             addInViewPortCallback: useCallback(
               (itemKey: any, callback: Callback) =>
-                addInViewPortCallback(
-                  { callbacksMap, cleansMap },
+                addCallback(
+                  {
+                    callbacksMap: inViewPortCallbacksMap,
+                    cleansMap: inViewPortCleansMap,
+                  },
                   itemKey,
                   callback
                 ),
-              [addInViewPortCallback]
+              [addCallback]
             ),
             removeInViewPortCallback: useCallback(
               (itemKey: any, callback: Callback) =>
-                removeInViewPortCallback(
-                  { callbacksMap, cleansMap },
+                removeCallback(
+                  {
+                    callbacksMap: inViewPortCallbacksMap,
+                    cleansMap: inViewPortCleansMap,
+                  },
                   itemKey,
                   callback
                 ),
-              [removeInViewPortCallback]
+              [removeCallback]
             ),
           }}
         >
@@ -349,19 +358,20 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                       viewableKeys.add(itemKey);
 
                       if (enabledRef.current) {
-                        const callbacks = callbacksMap.current?.get(itemKey);
+                        const callbacks =
+                          inViewPortCallbacksMap.current?.get(itemKey);
                         callbacks?.forEach((callback) => {
                           const inViewPort = isInViewPortRecursively(itemKey);
                           if (inViewPort) {
                             const clean = callback();
-                            if (!cleansMap.current) {
-                              cleansMap.current = new Map();
+                            if (!inViewPortCleansMap.current) {
+                              inViewPortCleansMap.current = new Map();
                             }
                             let cleansWithCallback =
-                              cleansMap.current.get(itemKey);
+                              inViewPortCleansMap.current.get(itemKey);
                             if (!cleansWithCallback) {
                               cleansWithCallback = new Map();
-                              cleansMap.current.set(
+                              inViewPortCleansMap.current.set(
                                 itemKey,
                                 cleansWithCallback
                               );
@@ -371,9 +381,9 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                           }
                         });
                         if (callbacks?.size === 0) {
-                          callbacksMap.current?.delete(itemKey);
-                          if (callbacksMap.current?.size === 0) {
-                            callbacksMap.current = undefined;
+                          inViewPortCallbacksMap.current?.delete(itemKey);
+                          if (inViewPortCallbacksMap.current?.size === 0) {
+                            inViewPortCallbacksMap.current = undefined;
                           }
                         }
                       }
@@ -386,8 +396,9 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                 willHideKeys.forEach((itemKey) => {
                   viewableKeys.delete(itemKey);
 
-                  if (enabledRef.current && cleansMap.current) {
-                    const cleansWithCallback = cleansMap.current.get(itemKey);
+                  if (enabledRef.current && inViewPortCleansMap.current) {
+                    const cleansWithCallback =
+                      inViewPortCleansMap.current.get(itemKey);
 
                     cleansWithCallback?.forEach((clean, callback) => {
                       if (typeof clean === 'function') {
@@ -395,19 +406,20 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                       }
 
                       // give back again
-                      if (!callbacksMap.current) {
-                        callbacksMap.current = new Map();
+                      if (!inViewPortCallbacksMap.current) {
+                        inViewPortCallbacksMap.current = new Map();
                       }
-                      let callbacks = callbacksMap.current.get(itemKey);
+                      let callbacks =
+                        inViewPortCallbacksMap.current.get(itemKey);
                       if (!callbacks) {
                         callbacks = new Set();
-                        callbacksMap.current.set(itemKey, callbacks);
+                        inViewPortCallbacksMap.current.set(itemKey, callbacks);
                       }
                       callbacks.add(callback);
                     });
-                    cleansMap.current.delete(itemKey);
-                    if (cleansMap.current.size === 0) {
-                      cleansMap.current = undefined;
+                    inViewPortCleansMap.current.delete(itemKey);
+                    if (inViewPortCleansMap.current.size === 0) {
+                      inViewPortCleansMap.current = undefined;
                     }
                   }
                 });
