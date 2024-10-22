@@ -42,22 +42,20 @@ const isFunction = (f: any) => typeof f === 'function';
 
 export const useInViewPort = (callback: Callback, deps?: any[]) => {
   const { key } = useContext(ItemContext);
-  const {
-    addInViewPortCallback: addCallback,
-    removeInViewPortCallback: removeCallback,
-  } = useContext(CallbacksContext);
+  const { addInViewPortCallback, removeInViewPortCallback } =
+    useContext(CallbacksContext);
 
   const finalDeps = Array.isArray(deps) ? deps : [];
 
   useEffect(() => {
     if (!key) return; // If it is not an item of observable list.
-    addCallback(key, callback);
+    addInViewPortCallback(key, callback);
     return () => {
-      removeCallback(key, callback);
+      removeInViewPortCallback(key, callback);
     };
     // The callback depends on deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, addCallback, removeCallback, ...finalDeps]);
+  }, [key, addInViewPortCallback, removeInViewPortCallback, ...finalDeps]);
 };
 
 export function observe<L extends React.ComponentType<any>>(List: L) {
