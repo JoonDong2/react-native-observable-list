@@ -21,9 +21,13 @@ const ConfigurationContext = createContext<{ enabled?: boolean }>({
 const CallbacksContext = createContext<{
   addInViewPortCallback: (key: any, callback: Callback) => void;
   removeInViewPortCallback: (key: any, clean: Clean) => void;
+  addIsFirstCallback: (key: any, callback: Callback) => void;
+  removeIsFirstCallback: (key: any, clean: Clean) => void;
 }>({
   addInViewPortCallback: () => {},
   removeInViewPortCallback: () => {},
+  addIsFirstCallback: () => {},
+  removeIsFirstCallback: () => {},
 });
 
 const ItemContext = createContext<{
@@ -85,6 +89,13 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
       undefined
     );
     const inViewPortCleansMap = useRef<
+      Map<any, Map<Callback, Clean | undefined>> | undefined
+    >(undefined);
+
+    const isFirstCallbacksMap = useRef<Map<any, Set<any>> | undefined>(
+      undefined
+    );
+    const isFirstCleansMap = useRef<
       Map<any, Map<Callback, Clean | undefined>> | undefined
     >(undefined);
 
@@ -317,6 +328,30 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                   {
                     callbacksMap: inViewPortCallbacksMap,
                     cleansMap: inViewPortCleansMap,
+                  },
+                  itemKey,
+                  callback
+                ),
+              [removeCallback]
+            ),
+            addIsFirstCallback: useCallback(
+              (itemKey: any, callback: Callback) =>
+                addCallback(
+                  {
+                    callbacksMap: isFirstCallbacksMap,
+                    cleansMap: isFirstCleansMap,
+                  },
+                  itemKey,
+                  callback
+                ),
+              [addCallback]
+            ),
+            removeIsFirstCallback: useCallback(
+              (itemKey: any, callback: Callback) =>
+                removeCallback(
+                  {
+                    callbacksMap: isFirstCallbacksMap,
+                    cleansMap: isFirstCleansMap,
                   },
                   itemKey,
                   callback
