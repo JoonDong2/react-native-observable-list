@@ -58,6 +58,24 @@ export const useInViewPort = (callback: Callback, deps?: any[]) => {
   }, [key, addInViewPortCallback, removeInViewPortCallback, ...finalDeps]);
 };
 
+export const useIsFirst = (callback: Callback, deps?: any[]) => {
+  const { key } = useContext(ItemContext);
+  const { addIsFirstCallback, removeIsFirstCallback } =
+    useContext(CallbacksContext);
+
+  const finalDeps = Array.isArray(deps) ? deps : [];
+
+  useEffect(() => {
+    if (!key) return; // If it is not an item of observable list.
+    addIsFirstCallback(key, callback);
+    return () => {
+      removeIsFirstCallback(key, callback);
+    };
+    // The callback depends on deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, addIsFirstCallback, removeIsFirstCallback, ...finalDeps]);
+};
+
 export function observe<L extends React.ComponentType<any>>(List: L) {
   return React.forwardRef<L, any>(function (
     { onViewableItemsChanged, keyExtractor, renderItem, $$enabled, ...props },
@@ -65,6 +83,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
   ) {
     const { isInViewPort, key } = useContext(ItemContext);
 
+    const firstKey = useRef<any>();
     const viewableKeys = useRef<Set<any>>(new Set()).current;
 
     // traverse to root recursively.
@@ -456,6 +475,76 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                     }
                   }
                 });
+
+                const first = viewableItems[0]?.item;
+                const firstItemKey =
+                  typeof keyExtractor === 'function'
+                    ? keyExtractor(first)
+                    : first;
+
+                if (enabledRef.current && firstItemKey !== firstKey.current) {
+                  const prevKey = firstKey.current;
+
+                  if (prevKey !== undefined) {
+                    const cleansWithCallback =
+                      isFirstCleansMap.current?.get(prevKey);
+
+                    cleansWithCallback?.forEach((clean, callback) => {
+                      if (typeof clean === 'function') {
+                        clean();
+                      }
+
+                      // give back again
+                      if (!isFirstCallbacksMap.current) {
+                        isFirstCallbacksMap.current = new Map();
+                      }
+                      let callbacks = isFirstCallbacksMap.current.get(prevKey);
+                      if (!callbacks) {
+                        callbacks = new Set();
+                        isFirstCallbacksMap.current.set(prevKey, callbacks);
+                      }
+                      callbacks.add(callback);
+                    });
+
+                    isFirstCleansMap.current?.delete(firstItemKey);
+
+                    if (isFirstCleansMap.current?.size === 0) {
+                      inViewPortCleansMap.current = undefined;
+                    }
+                  }
+
+                  firstKey.current = firstItemKey;
+
+                  const callbacks =
+                    isFirstCallbacksMap.current?.get(firstItemKey);
+
+                  callbacks?.forEach((callback) => {
+                    const inViewPort = isInViewPortRecursively(firstItemKey);
+                    if (inViewPort) {
+                      const clean = callback();
+                      if (!isFirstCleansMap.current) {
+                        isFirstCleansMap.current = new Map();
+                      }
+                      let cleansWithCallback =
+                        isFirstCleansMap.current.get(firstItemKey);
+                      if (!cleansWithCallback) {
+                        cleansWithCallback = new Map();
+                        isFirstCleansMap.current.set(
+                          firstItemKey,
+                          cleansWithCallback
+                        );
+                      }
+                      cleansWithCallback.set(callback, clean);
+                      callbacks.delete(callback);
+                    }
+                  });
+                  if (callbacks?.size === 0) {
+                    inViewPortCallbacksMap.current?.delete(firstItemKey);
+                    if (inViewPortCallbacksMap.current?.size === 0) {
+                      inViewPortCallbacksMap.current = undefined;
+                    }
+                  }
+                }
 
                 // reserved from removeCallback
                 if (removeCallbackTasks.current) {
