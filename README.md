@@ -12,9 +12,13 @@ It provides item tracking functionality for lists that offer an `onViewableItems
 
 - Detect First Item ([Example4](#example4-detect-first-item))
 
-## demo
+## demo1 (`useInViewPort`, Example 1-3)
 
-![demo](./demo.gif)
+![demo1](./demo-useInViewPort.gif)
+
+## demo2 (`useIsFirst`, Example 4)
+
+![demo2](./demo-useIsFirst.gif)
 
 ## Installation
 
@@ -157,6 +161,53 @@ const Example3 = () => {
 
 ## [Example4](./example/src/Example4.tsx) (Detect First Item)
 
+The callback function registered with the useIsFirst hook is triggered when the first item changes.
+
+```js
+import { useState } from 'react';
+import { FlatList, View } from 'react-native';
+import { observe, useIsFirst } from 'react-native-observable-list';
+
+const ObservableFlatList = observe(FlatList);
+
+const Item = ({
+  color,
+  onFirst,
+  height = 500,
+}: {
+  color: string;
+  onFirst: () => void;
+  height?: number;
+}) => {
+  useIsFirst(() => {
+    onFirst();
+  }, [color]);
+
+  return <View style={{ backgroundColor: color, height }} />;
+};
+
+const data = ['blue', 'yellow', 'green', 'orange'];
+
+const Example4 = () => {
+  const [first, setFirst] = useState<string | undefined>(undefined);
+  return (
+    <ObservableFlatList
+      data={data}
+      renderItem={({ item: color }) => {
+        return (
+          <Item
+            color={color}
+            onFirst={() => {
+              setFirst(color);
+            }}
+          />
+        );
+      }}
+    />
+  );
+};
+```
+
 ## [key](./src/observe.tsx#L403-L406)
 
 The item object is used as the `key` to store its visibility status by default.
@@ -255,6 +306,14 @@ Because of this, even if an item with the sticky property is visible on the scre
 `FlashList` duplicates sticky items and overlaps them.
 
 Because of this, items may appear twice and be perceived as disappearing.
+
+### useIsFirst in FlashList
+
+In FlashList, sticky items are duplicated and overlaid with an absolute position.
+
+This may cause state changes to not function properly. As a result, [`Example 4`](./example//src/Example4.tsx) will not work when using `FlashList`.
+
+Additionally, since sticky headers in `FlashList` are treated as items outside of the list, any item being tracked as the first header will be considered "first" once it scrolls up by the height of the sticky header.
 
 ## License
 
