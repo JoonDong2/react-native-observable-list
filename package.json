@@ -1,6 +1,6 @@
 {
   "name": "react-native-observable-list",
-  "version": "2.5.0",
+  "version": "3.0.0",
   "description": "It provides item tracking functionality for lists that offer an `onViewableItemsChanged` callback with the type `({viewableItems: ViewToken[]}) => void` and a `renderItem` property with the type `({item: ItemT, index: number}) => React.ReactElement`.",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
