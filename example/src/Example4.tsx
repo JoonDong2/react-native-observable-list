@@ -1,5 +1,5 @@
 /* eslint-disable react-native/no-inline-styles */
-import { useRef, useState } from 'react';
+import { useRef, useState, type PropsWithChildren } from 'react';
 import {
   FlatList,
   Pressable,
@@ -17,19 +17,18 @@ import {
 
 const ObservableFlatList = observe(FlatList);
 
-const Item = ({
-  color,
+const Item = ({ color, height = 500 }: { color: string; height?: number }) => {
+  return <View style={{ backgroundColor: color, height }} />;
+};
+
+const IsFirst = ({
+  children,
   onFirst,
-  height = 500,
-}: {
-  color: string;
-  onFirst: () => void;
-  height?: number;
-}) => {
+}: PropsWithChildren<{ onFirst: () => void }>) => {
   useIsFirst(() => {
     onFirst();
-  }, [color]);
-  return <View style={{ backgroundColor: color, height }} />;
+  }, []);
+  return children;
 };
 
 const Tab = ({
@@ -67,7 +66,10 @@ const Tab = ({
                   padding: 10,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  backgroundColor: color === first ? 'gray' : undefined,
+                  backgroundColor:
+                    color === first || (!first && index === 0)
+                      ? 'gray'
+                      : undefined,
                 }}
               >
                 <Text style={{ color: 'black' }}>{color}</Text>
@@ -105,14 +107,7 @@ const Example4 = () => {
         renderItem={({ item: color }) => {
           // contents header
           if (color === 'blue') {
-            return (
-              <Item
-                color={color}
-                onFirst={() => {
-                  setFirst(undefined);
-                }}
-              />
-            );
+            return <Item color={color} />;
           }
           if (color === 'tab') {
             return (
@@ -129,12 +124,13 @@ const Example4 = () => {
           }
           // contents
           return (
-            <Item
-              color={color}
+            <IsFirst
               onFirst={() => {
                 setFirst(color);
               }}
-            />
+            >
+              <Item color={color} />
+            </IsFirst>
           );
         }}
       />
