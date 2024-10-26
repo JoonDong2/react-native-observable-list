@@ -210,20 +210,17 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
         if (!callbacks) return;
 
         callbacks.forEach((callback) => {
-          const inViewPort = isInViewPortRecursively(itemKey);
-          if (inViewPort) {
-            const clean = callback();
-            if (!store.cleansMap.current) {
-              store.cleansMap.current = new Map();
-            }
-            let cleansWithCallback = store.cleansMap.current.get(itemKey);
-            if (!cleansWithCallback) {
-              cleansWithCallback = new Map();
-              store.cleansMap.current.set(itemKey, cleansWithCallback);
-            }
-            cleansWithCallback.set(callback, clean);
-            callbacks.delete(callback);
+          const clean = callback();
+          if (!store.cleansMap.current) {
+            store.cleansMap.current = new Map();
           }
+          let cleansWithCallback = store.cleansMap.current.get(itemKey);
+          if (!cleansWithCallback) {
+            cleansWithCallback = new Map();
+            store.cleansMap.current.set(itemKey, cleansWithCallback);
+          }
+          cleansWithCallback.set(callback, clean);
+          callbacks.delete(callback);
         });
 
         if (callbacks.size === 0) {
@@ -233,7 +230,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
           }
         }
       },
-      [isInViewPortRecursively]
+      []
     );
 
     const consumeCleans = useCallback(
@@ -287,7 +284,9 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
       if (!enabled) return;
 
       viewableKeys.forEach((itemKey) => {
-        consumeCallbacks(itemKey, inViewPortStore);
+        if (isInViewPortRecursively(itemKey)) {
+          consumeCallbacks(itemKey, inViewPortStore);
+        }
       });
 
       return () => {
@@ -311,7 +310,9 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
         if (!enabled) {
           // consume callback
           viewableKeys.forEach((itemKey) => {
-            consumeCallbacks(itemKey, inViewPortStore);
+            if (isInViewPortRecursively(itemKey)) {
+              consumeCallbacks(itemKey, inViewPortStore);
+            }
           });
         }
       };
@@ -379,7 +380,9 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                       viewableKeys.add(itemKey);
 
                       if (enabledRef.current) {
-                        consumeCallbacks(itemKey, inViewPortStore);
+                        if (isInViewPortRecursively(itemKey)) {
+                          consumeCallbacks(itemKey, inViewPortStore);
+                        }
                       }
                     }
 
@@ -410,7 +413,9 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
 
                   firstKey.current = firstItemKey;
 
-                  consumeCallbacks(firstItemKey, isFirstStore);
+                  if (isInViewPortRecursively(firstItemKey)) {
+                    consumeCallbacks(firstItemKey, isFirstStore);
+                  }
                 }
 
                 // reserved from removeCallback
@@ -428,6 +433,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                 consumeCleans,
                 inViewPortStore,
                 isFirstStore,
+                isInViewPortRecursively,
                 keyExtractor,
                 onViewableItemsChanged,
                 viewableKeys,
