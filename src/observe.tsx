@@ -485,9 +485,9 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                 if (enabledRef.current && firstItemKey !== firstKey.current) {
                   const prevKey = firstKey.current;
 
-                  if (prevKey !== undefined) {
+                  if (prevKey !== undefined && isFirstCleansMap.current) {
                     const cleansWithCallback =
-                      isFirstCleansMap.current?.get(prevKey);
+                      isFirstCleansMap.current.get(prevKey);
 
                     cleansWithCallback?.forEach((clean, callback) => {
                       if (typeof clean === 'function') {
@@ -509,39 +509,41 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                     isFirstCleansMap.current?.delete(firstItemKey);
 
                     if (isFirstCleansMap.current?.size === 0) {
-                      inViewPortCleansMap.current = undefined;
+                      isFirstCleansMap.current = undefined;
                     }
                   }
 
                   firstKey.current = firstItemKey;
 
-                  const callbacks =
-                    isFirstCallbacksMap.current?.get(firstItemKey);
+                  if (isFirstCallbacksMap.current) {
+                    const callbacks =
+                      isFirstCallbacksMap.current?.get(firstItemKey);
 
-                  callbacks?.forEach((callback) => {
-                    const inViewPort = isInViewPortRecursively(firstItemKey);
-                    if (inViewPort) {
-                      const clean = callback();
-                      if (!isFirstCleansMap.current) {
-                        isFirstCleansMap.current = new Map();
+                    callbacks?.forEach((callback) => {
+                      const inViewPort = isInViewPortRecursively(firstItemKey);
+                      if (inViewPort) {
+                        const clean = callback();
+                        if (!isFirstCleansMap.current) {
+                          isFirstCleansMap.current = new Map();
+                        }
+                        let cleansWithCallback =
+                          isFirstCleansMap.current.get(firstItemKey);
+                        if (!cleansWithCallback) {
+                          cleansWithCallback = new Map();
+                          isFirstCleansMap.current.set(
+                            firstItemKey,
+                            cleansWithCallback
+                          );
+                        }
+                        cleansWithCallback.set(callback, clean);
+                        callbacks.delete(callback);
                       }
-                      let cleansWithCallback =
-                        isFirstCleansMap.current.get(firstItemKey);
-                      if (!cleansWithCallback) {
-                        cleansWithCallback = new Map();
-                        isFirstCleansMap.current.set(
-                          firstItemKey,
-                          cleansWithCallback
-                        );
+                    });
+                    if (callbacks?.size === 0) {
+                      isFirstCallbacksMap.current?.delete(firstItemKey);
+                      if (isFirstCallbacksMap.current?.size === 0) {
+                        isFirstCallbacksMap.current = undefined;
                       }
-                      cleansWithCallback.set(callback, clean);
-                      callbacks.delete(callback);
-                    }
-                  });
-                  if (callbacks?.size === 0) {
-                    inViewPortCallbacksMap.current?.delete(firstItemKey);
-                    if (inViewPortCallbacksMap.current?.size === 0) {
-                      inViewPortCallbacksMap.current = undefined;
                     }
                   }
                 }
