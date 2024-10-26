@@ -28,6 +28,77 @@ const useStore = (): Store => {
   }).current;
 };
 
+const consumeCallbacks = (
+  itemKey: any,
+  store: {
+    callbacksMap: { current?: CallbacksMap };
+    cleansMap: { current?: CleansMap };
+  }
+) => {
+  if (!store.callbacksMap.current) return;
+
+  const callbacks = store.callbacksMap.current?.get(itemKey);
+
+  if (!callbacks) return;
+
+  callbacks.forEach((callback) => {
+    const clean = callback();
+    if (!store.cleansMap.current) {
+      store.cleansMap.current = new Map();
+    }
+    let cleansWithCallback = store.cleansMap.current.get(itemKey);
+    if (!cleansWithCallback) {
+      cleansWithCallback = new Map();
+      store.cleansMap.current.set(itemKey, cleansWithCallback);
+    }
+    cleansWithCallback.set(callback, clean);
+    callbacks.delete(callback);
+  });
+
+  if (callbacks.size === 0) {
+    store.callbacksMap.current?.delete(itemKey);
+    if (store.callbacksMap.current.size === 0) {
+      store.callbacksMap.current = undefined;
+    }
+  }
+};
+
+const consumeCleans = (
+  itemKey: any,
+  store: {
+    callbacksMap: { current?: CallbacksMap };
+    cleansMap: { current?: CleansMap };
+  }
+) => {
+  if (!store.cleansMap.current) return;
+
+  const cleansWithCallback = store.cleansMap.current.get(itemKey);
+
+  if (!cleansWithCallback) return;
+
+  cleansWithCallback.forEach((clean, callback) => {
+    if (typeof clean === 'function') {
+      clean();
+    }
+
+    // give back again
+    if (!store.callbacksMap.current) {
+      store.callbacksMap.current = new Map();
+    }
+    let callbacks = store.callbacksMap.current.get(itemKey);
+    if (!callbacks) {
+      callbacks = new Set();
+      store.callbacksMap.current.set(itemKey, callbacks);
+    }
+    callbacks.add(callback);
+  });
+
+  store.cleansMap.current.delete(itemKey);
+  if (store.cleansMap.current.size === 0) {
+    store.cleansMap.current = undefined;
+  }
+};
+
 const ConfigurationContext = createContext<{ enabled?: boolean }>({
   enabled: true,
 });
@@ -195,83 +266,6 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
       []
     );
 
-    const consumeCallbacks = useCallback(
-      (
-        itemKey: any,
-        store: {
-          callbacksMap: { current?: CallbacksMap };
-          cleansMap: { current?: CleansMap };
-        }
-      ) => {
-        if (!store.callbacksMap.current) return;
-
-        const callbacks = store.callbacksMap.current?.get(itemKey);
-
-        if (!callbacks) return;
-
-        callbacks.forEach((callback) => {
-          const clean = callback();
-          if (!store.cleansMap.current) {
-            store.cleansMap.current = new Map();
-          }
-          let cleansWithCallback = store.cleansMap.current.get(itemKey);
-          if (!cleansWithCallback) {
-            cleansWithCallback = new Map();
-            store.cleansMap.current.set(itemKey, cleansWithCallback);
-          }
-          cleansWithCallback.set(callback, clean);
-          callbacks.delete(callback);
-        });
-
-        if (callbacks.size === 0) {
-          store.callbacksMap.current?.delete(itemKey);
-          if (store.callbacksMap.current.size === 0) {
-            store.callbacksMap.current = undefined;
-          }
-        }
-      },
-      []
-    );
-
-    const consumeCleans = useCallback(
-      (
-        itemKey: any,
-        store: {
-          callbacksMap: { current?: CallbacksMap };
-          cleansMap: { current?: CleansMap };
-        }
-      ) => {
-        if (!store.cleansMap.current) return;
-
-        const cleansWithCallback = store.cleansMap.current.get(itemKey);
-
-        if (!cleansWithCallback) return;
-
-        cleansWithCallback.forEach((clean, callback) => {
-          if (typeof clean === 'function') {
-            clean();
-          }
-
-          // give back again
-          if (!store.callbacksMap.current) {
-            store.callbacksMap.current = new Map();
-          }
-          let callbacks = store.callbacksMap.current.get(itemKey);
-          if (!callbacks) {
-            callbacks = new Set();
-            store.callbacksMap.current.set(itemKey, callbacks);
-          }
-          callbacks.add(callback);
-        });
-
-        store.cleansMap.current.delete(itemKey);
-        if (store.cleansMap.current.size === 0) {
-          store.cleansMap.current = undefined;
-        }
-      },
-      []
-    );
-
     const { enabled: parentEnabled } = useContext(ConfigurationContext);
     const enabled = parentEnabled && $$enabled !== false ? true : false;
     const enabledRef = useRef(enabled); //  This is because `FlashList` does not detect changes in `onViewableItemsChanged`.
@@ -429,13 +423,12 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                 onViewableItemsChanged?.({ changed, viewableItems });
               },
               [
-                consumeCallbacks,
-                consumeCleans,
-                inViewPortStore,
-                isFirstStore,
                 isInViewPortRecursively,
                 keyExtractor,
                 onViewableItemsChanged,
+                // ref
+                inViewPortStore,
+                isFirstStore,
                 viewableKeys,
               ]
             )}
