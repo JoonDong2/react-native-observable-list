@@ -10,94 +10,8 @@ import {
   type ListRenderItem,
   type ViewToken,
 } from 'react-native';
-
-type Clean = () => void;
-type Callback = () => Clean | undefined | void;
-
-type CallbacksMap = Map<any, Set<any>>;
-type CleansMap = Map<any, Map<Callback, Clean | undefined>>;
-interface Store {
-  callbacksMap: { current?: CallbacksMap };
-  cleansMap: { current?: CleansMap };
-}
-
-const useStore = (): Store => {
-  return useRef({
-    callbacksMap: { current: undefined },
-    cleansMap: { current: undefined },
-  }).current;
-};
-
-const consumeCallbacks = (
-  itemKey: any,
-  store: {
-    callbacksMap: { current?: CallbacksMap };
-    cleansMap: { current?: CleansMap };
-  }
-) => {
-  if (!store.callbacksMap.current) return;
-
-  const callbacks = store.callbacksMap.current?.get(itemKey);
-
-  if (!callbacks) return;
-
-  callbacks.forEach((callback) => {
-    const clean = callback();
-    if (!store.cleansMap.current) {
-      store.cleansMap.current = new Map();
-    }
-    let cleansWithCallback = store.cleansMap.current.get(itemKey);
-    if (!cleansWithCallback) {
-      cleansWithCallback = new Map();
-      store.cleansMap.current.set(itemKey, cleansWithCallback);
-    }
-    cleansWithCallback.set(callback, clean);
-    callbacks.delete(callback);
-  });
-
-  if (callbacks.size === 0) {
-    store.callbacksMap.current?.delete(itemKey);
-    if (store.callbacksMap.current.size === 0) {
-      store.callbacksMap.current = undefined;
-    }
-  }
-};
-
-const consumeCleans = (
-  itemKey: any,
-  store: {
-    callbacksMap: { current?: CallbacksMap };
-    cleansMap: { current?: CleansMap };
-  }
-) => {
-  if (!store.cleansMap.current) return;
-
-  const cleansWithCallback = store.cleansMap.current.get(itemKey);
-
-  if (!cleansWithCallback) return;
-
-  cleansWithCallback.forEach((clean, callback) => {
-    if (typeof clean === 'function') {
-      clean();
-    }
-
-    // give back again
-    if (!store.callbacksMap.current) {
-      store.callbacksMap.current = new Map();
-    }
-    let callbacks = store.callbacksMap.current.get(itemKey);
-    if (!callbacks) {
-      callbacks = new Set();
-      store.callbacksMap.current.set(itemKey, callbacks);
-    }
-    callbacks.add(callback);
-  });
-
-  store.cleansMap.current.delete(itemKey);
-  if (store.cleansMap.current.size === 0) {
-    store.cleansMap.current = undefined;
-  }
-};
+import { consumeCallbacks, consumeCleans, useStore, type Store } from './store';
+import type { Callback, Clean } from './types';
 
 const ConfigurationContext = createContext<{ enabled?: boolean }>({
   enabled: true,
@@ -188,14 +102,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
     const isFirstStore = useStore();
 
     const addCallback = useCallback(
-      (
-        store: {
-          callbacksMap: { current?: Map<any, Set<any>> };
-          cleansMap: { current?: Map<any, Map<Callback, Clean | undefined>> };
-        },
-        itemKey: any,
-        callback: Callback
-      ) => {
+      (store: Store, itemKey: any, callback: Callback) => {
         if (isInViewPortRecursively(itemKey)) {
           const clean = callback();
           if (clean) {
@@ -227,14 +134,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
     const removeCallbackTasks = useRef<(() => void)[]>();
 
     const removeCallback = useCallback(
-      (
-        store: {
-          callbacksMap: { current?: Map<any, Set<any>> };
-          cleansMap: { current?: Map<any, Map<Callback, Clean | undefined>> };
-        },
-        itemKey: any,
-        callback: Callback
-      ) => {
+      (store: Store, itemKey: any, callback: Callback) => {
         const task = () => {
           if (store.callbacksMap.current) {
             const callbacks = store.callbacksMap.current.get(itemKey);
