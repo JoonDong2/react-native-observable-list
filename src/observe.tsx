@@ -185,7 +185,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
             if (cleansWithCallback?.size === 0) {
               store.cleansMap.current.delete(itemKey);
               if (store.cleansMap.current.size === 0) {
-                inViewPortCleansMap.current = undefined;
+                store.cleansMap.current = undefined;
               }
             }
           }
