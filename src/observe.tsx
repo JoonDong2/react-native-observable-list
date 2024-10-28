@@ -239,10 +239,9 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                   const { item, isViewable } = viewableItem;
 
                   if (isViewable) {
-                    const itemKey =
-                      typeof keyExtractor === 'function'
-                        ? keyExtractor(item)
-                        : item;
+                    const itemKey = isFunction(keyExtractor)
+                      ? keyExtractor(item)
+                      : item;
 
                     const isNew = !viewableKeys.has(itemKey);
                     if (isNew) {
@@ -268,10 +267,9 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                 });
 
                 const first = viewableItems[0]?.item;
-                const firstItemKey =
-                  typeof keyExtractor === 'function'
-                    ? keyExtractor(first)
-                    : first;
+                const firstItemKey = isFunction(keyExtractor)
+                  ? keyExtractor(first)
+                  : first;
 
                 if (enabledRef.current && firstItemKey !== firstKey.current) {
                   const prevKey = firstKey.current;
