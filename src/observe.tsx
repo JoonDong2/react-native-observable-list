@@ -10,7 +10,16 @@ import {
   type ListRenderItem,
   type ViewToken,
 } from 'react-native';
-import { consumeCallbacks, consumeCleans, useStore, type Store } from './store';
+import {
+  addCallback,
+  addClean,
+  consumeCallbacks,
+  consumeCleans,
+  removeCallback,
+  removeClean,
+  useStore,
+  type Store,
+} from './store';
 import type { Callback, Clean } from './types';
 
 const ConfigurationContext = createContext<{ enabled?: boolean }>({
@@ -101,31 +110,13 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
     const inViewPortStore = useStore();
     const isFirstStore = useStore();
 
-    const addCallback = useCallback(
+    const addCallbackOrClean = useCallback(
       (store: Store, itemKey: any, callback: Callback) => {
         if (isInViewPortRecursively(itemKey)) {
           const clean = callback();
-          if (clean) {
-            if (!store.cleansMap.current) {
-              store.cleansMap.current = new Map();
-            }
-            let cleansWithCallback = store.cleansMap.current.get(itemKey);
-            if (!cleansWithCallback) {
-              cleansWithCallback = new Map();
-              store.cleansMap.current.set(itemKey, cleansWithCallback);
-            }
-            cleansWithCallback.set(callback, clean);
-          }
+          addClean(store, itemKey, callback, clean);
         } else {
-          if (!store.callbacksMap.current) {
-            store.callbacksMap.current = new Map();
-          }
-          let callbacks = store.callbacksMap.current.get(itemKey);
-          if (!callbacks) {
-            callbacks = new Set<Callback>();
-            store.callbacksMap.current.set(itemKey, callbacks);
-          }
-          callbacks.add(callback);
+          addCallback(store, itemKey, callback);
         }
       },
       [isInViewPortRecursively]
@@ -133,30 +124,11 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
 
     const removeCallbackTasks = useRef<(() => void)[]>();
 
-    const removeCallback = useCallback(
+    const reserveRemoveCallbackAndClean = useCallback(
       (store: Store, itemKey: any, callback: Callback) => {
         const task = () => {
-          if (store.callbacksMap.current) {
-            const callbacks = store.callbacksMap.current.get(itemKey);
-            callbacks?.delete(callback);
-            if (callbacks?.size === 0) {
-              store.callbacksMap.current.delete(itemKey);
-              if (store.callbacksMap.current.size === 0) {
-                store.callbacksMap.current = undefined;
-              }
-            }
-          }
-
-          if (store.cleansMap.current) {
-            const cleansWithCallback = store.cleansMap.current.get(itemKey);
-            cleansWithCallback?.delete(callback);
-            if (cleansWithCallback?.size === 0) {
-              store.cleansMap.current.delete(itemKey);
-              if (store.cleansMap.current.size === 0) {
-                store.cleansMap.current = undefined;
-              }
-            }
-          }
+          removeCallback(store, itemKey, callback);
+          removeClean(store, itemKey, callback);
         };
         if (!removeCallbackTasks.current) {
           removeCallbackTasks.current = [];
@@ -193,7 +165,6 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
     useEffect(() => {
       // true -> false
       if (!enabled) {
-        // give back all cleans
         viewableKeys.forEach((itemKey) => {
           consumeCleans(itemKey, inViewPortStore);
         });
@@ -221,23 +192,27 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
           value={{
             addInViewPortCallback: useCallback(
               (itemKey: any, callback: Callback) =>
-                addCallback(inViewPortStore, itemKey, callback),
-              [addCallback, inViewPortStore]
+                addCallbackOrClean(inViewPortStore, itemKey, callback),
+              [addCallbackOrClean, inViewPortStore]
             ),
             removeInViewPortCallback: useCallback(
               (itemKey: any, callback: Callback) =>
-                removeCallback(inViewPortStore, itemKey, callback),
-              [removeCallback, inViewPortStore]
+                reserveRemoveCallbackAndClean(
+                  inViewPortStore,
+                  itemKey,
+                  callback
+                ),
+              [reserveRemoveCallbackAndClean, inViewPortStore]
             ),
             addIsFirstCallback: useCallback(
               (itemKey: any, callback: Callback) =>
-                addCallback(isFirstStore, itemKey, callback),
-              [addCallback, isFirstStore]
+                addCallbackOrClean(isFirstStore, itemKey, callback),
+              [addCallbackOrClean, isFirstStore]
             ),
             removeIsFirstCallback: useCallback(
               (itemKey: any, callback: Callback) =>
-                removeCallback(isFirstStore, itemKey, callback),
-              [removeCallback, isFirstStore]
+                reserveRemoveCallbackAndClean(isFirstStore, itemKey, callback),
+              [reserveRemoveCallbackAndClean, isFirstStore]
             ),
           }}
         >
@@ -312,7 +287,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
                   }
                 }
 
-                // reserved from removeCallback
+                // reserved from removeCallbackAndClean
                 if (removeCallbackTasks.current) {
                   for (let i = 0; i < removeCallbackTasks.current.length; i++) {
                     removeCallbackTasks.current[i]?.();
