@@ -20,8 +20,8 @@ import {
   useStore,
   type Store,
 } from './store';
-import type { Callback, Clean } from './types';
-import { isFunction } from './utils';
+import type { Callback, Clean, OnViewableItemsChanged } from './types';
+import { isFunction, parallelize } from './utils';
 
 const ConfigurationContext = createContext<{ enabled?: boolean }>({
   enabled: true,
@@ -183,6 +183,99 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [enabled]);
 
+    const handleViewableKeys: OnViewableItemsChanged = useCallback(
+      ({ viewableItems }) => {
+        const willHideKeys = new Set(viewableKeys);
+
+        for (let i = 0; i < viewableItems.length; i++) {
+          const viewableItem = viewableItems[i];
+          if (!viewableItem) {
+            continue;
+          }
+
+          const { item, isViewable } = viewableItem;
+
+          if (isViewable) {
+            const itemKey = isFunction(keyExtractor)
+              ? keyExtractor(item)
+              : item;
+
+            const isNew = !viewableKeys.has(itemKey);
+            if (isNew) {
+              viewableKeys.add(itemKey);
+
+              if (enabledRef.current) {
+                if (isInViewPortRecursively(itemKey)) {
+                  consumeCallbacks(itemKey, inViewPortStore);
+                }
+              }
+            }
+
+            willHideKeys.delete(itemKey);
+          }
+        }
+
+        willHideKeys.forEach((itemKey) => {
+          viewableKeys.delete(itemKey);
+
+          if (enabledRef.current) {
+            consumeCleans(itemKey, inViewPortStore);
+          }
+        });
+      },
+      [inViewPortStore, isInViewPortRecursively, keyExtractor, viewableKeys]
+    );
+
+    const handleFirstKey: OnViewableItemsChanged = useCallback(
+      ({ viewableItems }) => {
+        const first = viewableItems[0]?.item;
+        const firstItemKey = isFunction(keyExtractor)
+          ? keyExtractor(first)
+          : first;
+
+        if (enabledRef.current && firstItemKey !== firstKey.current) {
+          const prevKey = firstKey.current;
+
+          if (prevKey !== undefined) {
+            consumeCleans(prevKey, isFirstStore);
+          }
+
+          firstKey.current = firstItemKey;
+
+          if (isInViewPortRecursively(firstItemKey)) {
+            consumeCallbacks(firstItemKey, isFirstStore);
+          }
+        }
+      },
+      [isFirstStore, isInViewPortRecursively, keyExtractor]
+    );
+
+    const handleRemoveCallbackTasks: OnViewableItemsChanged =
+      useCallback(() => {
+        if (removeCallbackTasks.current) {
+          for (let i = 0; i < removeCallbackTasks.current.length; i++) {
+            removeCallbackTasks.current[i]?.();
+          }
+        }
+        removeCallbackTasks.current = undefined;
+      }, []);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const handleViewableItemsChanged = useCallback(
+      parallelize(
+        handleRemoveCallbackTasks,
+        handleViewableKeys,
+        handleFirstKey,
+        onViewableItemsChanged as OnViewableItemsChanged | undefined
+      ),
+      [
+        handleRemoveCallbackTasks,
+        handleViewableKeys,
+        handleFirstKey,
+        onViewableItemsChanged,
+      ]
+    );
+
     const ListComponent = List as any;
 
     return (
@@ -219,91 +312,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
             {...props}
             ref={ref}
             keyExtractor={keyExtractor}
-            onViewableItemsChanged={useCallback(
-              ({
-                changed,
-                viewableItems,
-              }: {
-                changed: ViewToken[];
-                viewableItems: ViewToken[];
-              }) => {
-                const willHideKeys = new Set(viewableKeys);
-
-                for (let i = 0; i < viewableItems.length; i++) {
-                  const viewableItem = viewableItems[i];
-                  if (!viewableItem) {
-                    continue;
-                  }
-
-                  const { item, isViewable } = viewableItem;
-
-                  if (isViewable) {
-                    const itemKey = isFunction(keyExtractor)
-                      ? keyExtractor(item)
-                      : item;
-
-                    const isNew = !viewableKeys.has(itemKey);
-                    if (isNew) {
-                      viewableKeys.add(itemKey);
-
-                      if (enabledRef.current) {
-                        if (isInViewPortRecursively(itemKey)) {
-                          consumeCallbacks(itemKey, inViewPortStore);
-                        }
-                      }
-                    }
-
-                    willHideKeys.delete(itemKey);
-                  }
-                }
-
-                willHideKeys.forEach((itemKey) => {
-                  viewableKeys.delete(itemKey);
-
-                  if (enabledRef.current) {
-                    consumeCleans(itemKey, inViewPortStore);
-                  }
-                });
-
-                const first = viewableItems[0]?.item;
-                const firstItemKey = isFunction(keyExtractor)
-                  ? keyExtractor(first)
-                  : first;
-
-                if (enabledRef.current && firstItemKey !== firstKey.current) {
-                  const prevKey = firstKey.current;
-
-                  if (prevKey !== undefined) {
-                    consumeCleans(prevKey, isFirstStore);
-                  }
-
-                  firstKey.current = firstItemKey;
-
-                  if (isInViewPortRecursively(firstItemKey)) {
-                    consumeCallbacks(firstItemKey, isFirstStore);
-                  }
-                }
-
-                // reserved from removeCallbackAndClean
-                if (removeCallbackTasks.current) {
-                  for (let i = 0; i < removeCallbackTasks.current.length; i++) {
-                    removeCallbackTasks.current[i]?.();
-                  }
-                }
-                removeCallbackTasks.current = undefined;
-
-                onViewableItemsChanged?.({ changed, viewableItems });
-              },
-              [
-                isInViewPortRecursively,
-                keyExtractor,
-                onViewableItemsChanged,
-                // ref
-                inViewPortStore,
-                isFirstStore,
-                viewableKeys,
-              ]
-            )}
+            onViewableItemsChanged={handleViewableItemsChanged}
             renderItem={useCallback(
               (itemProps: any) => {
                 const itemKey = isFunction(keyExtractor)
