@@ -140,9 +140,7 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
     const { enabled: parentEnabled } = useContext(ConfigurationContext);
     const enabled = parentEnabled && $$enabled !== false ? true : false;
     const enabledRef = useRef(enabled); //  This is because `FlashList` does not detect changes in `onViewableItemsChanged`.
-    useEffect(() => {
-      enabledRef.current = enabled;
-    }, [enabled]);
+    enabledRef.current = enabled;
 
     // When self is an item of an observable list.
     useInViewPort(() => {
