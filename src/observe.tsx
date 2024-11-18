@@ -21,6 +21,7 @@ import {
   type Store,
 } from './store';
 import type { Callback, Clean } from './types';
+import { isFunction } from './utils';
 
 const ConfigurationContext = createContext<{ enabled?: boolean }>({
   enabled: true,
@@ -45,8 +46,6 @@ const ItemContext = createContext<{
   key: undefined,
   isInViewPort: () => undefined,
 });
-
-const isFunction = (f: any) => typeof f === 'function';
 
 export const useInViewPort = (callback: Callback, deps?: any[]) => {
   const { key } = useContext(ItemContext);
