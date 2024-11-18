@@ -39,12 +39,16 @@ const CallbacksContext = createContext<{
   removeIsFirstCallback: () => {},
 });
 
-const ItemContext = createContext<{
-  key: any;
+const IsInViewPortContext = createContext<{
   isInViewPort: (key: any) => boolean | undefined;
 }>({
-  key: undefined,
   isInViewPort: () => undefined,
+});
+
+const ItemContext = createContext<{
+  key: any;
+}>({
+  key: undefined,
 });
 
 export const useInViewPort = (callback: Callback, deps?: any[]) => {
@@ -88,7 +92,9 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
     { onViewableItemsChanged, keyExtractor, renderItem, $$enabled, ...props },
     ref
   ) {
-    const { isInViewPort, key } = useContext(ItemContext);
+    const { key } = useContext(ItemContext);
+
+    const { isInViewPort } = useContext(IsInViewPortContext);
 
     const firstKey = useRef<any>();
     const viewableKeys = useRef<Set<any>>(new Set()).current;
@@ -278,60 +284,69 @@ export function observe<L extends React.ComponentType<any>>(List: L) {
 
     return (
       <ConfigurationContext.Provider value={{ enabled }}>
-        <CallbacksContext.Provider
+        <IsInViewPortContext.Provider
           value={{
-            addInViewPortCallback: useCallback(
-              (itemKey: any, callback: Callback) =>
-                addCallbackOrClean(inViewPortStore, itemKey, callback),
-              [addCallbackOrClean, inViewPortStore]
-            ),
-            removeInViewPortCallback: useCallback(
-              (itemKey: any, callback: Callback) =>
-                reserveRemoveCallbackAndClean(
-                  inViewPortStore,
-                  itemKey,
-                  callback
-                ),
-              [reserveRemoveCallbackAndClean, inViewPortStore]
-            ),
-            addIsFirstCallback: useCallback(
-              (itemKey: any, callback: Callback) =>
-                addCallbackOrClean(isFirstStore, itemKey, callback),
-              [addCallbackOrClean, isFirstStore]
-            ),
-            removeIsFirstCallback: useCallback(
-              (itemKey: any, callback: Callback) =>
-                reserveRemoveCallbackAndClean(isFirstStore, itemKey, callback),
-              [reserveRemoveCallbackAndClean, isFirstStore]
-            ),
+            isInViewPort: isInViewPortRecursively,
           }}
         >
-          <ListComponent
-            {...props}
-            ref={ref}
-            keyExtractor={keyExtractor}
-            onViewableItemsChanged={handleViewableItemsChanged}
-            renderItem={useCallback(
-              (itemProps: any) => {
-                const itemKey = isFunction(keyExtractor)
-                  ? keyExtractor(itemProps.item)
-                  : itemProps.item;
+          <CallbacksContext.Provider
+            value={{
+              addInViewPortCallback: useCallback(
+                (itemKey: any, callback: Callback) =>
+                  addCallbackOrClean(inViewPortStore, itemKey, callback),
+                [addCallbackOrClean, inViewPortStore]
+              ),
+              removeInViewPortCallback: useCallback(
+                (itemKey: any, callback: Callback) =>
+                  reserveRemoveCallbackAndClean(
+                    inViewPortStore,
+                    itemKey,
+                    callback
+                  ),
+                [reserveRemoveCallbackAndClean, inViewPortStore]
+              ),
+              addIsFirstCallback: useCallback(
+                (itemKey: any, callback: Callback) =>
+                  addCallbackOrClean(isFirstStore, itemKey, callback),
+                [addCallbackOrClean, isFirstStore]
+              ),
+              removeIsFirstCallback: useCallback(
+                (itemKey: any, callback: Callback) =>
+                  reserveRemoveCallbackAndClean(
+                    isFirstStore,
+                    itemKey,
+                    callback
+                  ),
+                [reserveRemoveCallbackAndClean, isFirstStore]
+              ),
+            }}
+          >
+            <ListComponent
+              {...props}
+              ref={ref}
+              keyExtractor={keyExtractor}
+              onViewableItemsChanged={handleViewableItemsChanged}
+              renderItem={useCallback(
+                (itemProps: any) => {
+                  const itemKey = isFunction(keyExtractor)
+                    ? keyExtractor(itemProps.item)
+                    : itemProps.item;
 
-                return (
-                  <ItemContext.Provider
-                    value={{
-                      key: itemKey,
-                      isInViewPort: isInViewPortRecursively,
-                    }}
-                  >
-                    {renderItem(itemProps)}
-                  </ItemContext.Provider>
-                );
-              },
-              [isInViewPortRecursively, keyExtractor, renderItem]
-            )}
-          />
-        </CallbacksContext.Provider>
+                  return (
+                    <ItemContext.Provider
+                      value={{
+                        key: itemKey,
+                      }}
+                    >
+                      {renderItem(itemProps)}
+                    </ItemContext.Provider>
+                  );
+                },
+                [keyExtractor, renderItem]
+              )}
+            />
+          </CallbacksContext.Provider>
+        </IsInViewPortContext.Provider>
       </ConfigurationContext.Provider>
     );
   }) as unknown as <ItemT>(
