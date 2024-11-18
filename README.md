@@ -252,7 +252,7 @@ I was unable to cast the input type directly to add the `$$enabled` property.
 
 Despite trying various casting methods, both `FlatList` and `FlashList` could not infer the item type.
 
-As a result, I had to [override the property that uses the item type in props](./src/observe.tsx#L331-L371).
+As a result, I had to [override the property that uses the item type in props](./src/observe.tsx#L352-L392).
 
 Therefore, while there should be no issue when wrapping `FlatList`, if you wrap a custom component (e.g., [`Example2`](#example2-react-native-reanimated-carousel)), newly added properties like `getItemLayout`, `CellRendererComponent`, and `getItemType` might be recognized by the newly created component.
 
